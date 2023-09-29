@@ -3,12 +3,17 @@ package com.example.foundation.views
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.foundation.model.ErrorResult
 import com.example.foundation.model.LoadingResult
 import com.example.foundation.model.tasks.Task
 import com.example.foundation.model.tasks.TaskListener
 import com.example.foundation.utils.Event
 import com.example.foundation.model.Result
+import com.example.foundation.model.SuccessResult
 import com.example.foundation.model.tasks.dispatchers.Dispatcher
+import kotlinx.coroutines.launch
+import java.lang.Exception
 
 
 typealias LiveEvent<T> = LiveData<Event<T>>
@@ -17,9 +22,7 @@ typealias MutableLiveEvent<T> = MutableLiveData<Event<T>>
 /**
  * Base class for all view-models.
  */
-open class BaseViewModel(
-    private val dispatcher: Dispatcher
-) : ViewModel() {
+open class BaseViewModel: ViewModel() {
 
     val tasks = mutableSetOf<Task<*>>()
 
@@ -37,19 +40,16 @@ open class BaseViewModel(
 
     }
 
-    fun <T> Task<T>.safeEnqueue(listener: TaskListener<T>? = null){
-        tasks.add(this)
-        this.enqueue(dispatcher) {
-            tasks.remove(this)
-            listener?.invoke(it)
-        }
-    }
 
 
-    fun <T> Task<T>.into(liveDataResult: MutableLiveData<Result<T>>){
-        liveDataResult.value = LoadingResult()
-        this.safeEnqueue {
-            liveDataResult.value = it
+
+    fun <T> into(liveDataResult: MutableLiveData<Result<T>>, block: suspend () -> T){
+        viewModelScope.launch {
+            try {
+                liveDataResult.postValue(SuccessResult(block()))
+            } catch (e: Exception){
+                liveDataResult.postValue((ErrorResult(e)))
+            }
         }
     }
 }

@@ -25,28 +25,28 @@ class InMemoryColorsRepository(
         listeners -= listener
     }
 
-    override fun getAvailableColors(): Task<List<NamedColor>> = tasksFactory.asyncCreate {
+    override suspend fun getAvailableColors(): List<NamedColor> = tasksFactory.asyncCreate {
         threadUtils.sleep(1000)
         return@asyncCreate AVAILABLE_COLORS
-    }
+    }.suspend()
 
-    override fun getById(id: Long): Task<NamedColor> = tasksFactory.asyncCreate {
+    override suspend fun getById(id: Long): NamedColor = tasksFactory.asyncCreate {
         threadUtils.sleep(1000)
         return@asyncCreate AVAILABLE_COLORS.first { it.id == id }
-    }
+    }.suspend()
 
-    override fun getCurrentColor(): Task<NamedColor>  = tasksFactory.asyncCreate {
+    override suspend fun getCurrentColor(): NamedColor  = tasksFactory.asyncCreate {
         threadUtils.sleep(1000)
         return@asyncCreate currentColor
-    }
+    }.suspend()
 
-    override fun setCurrentColor(color: NamedColor): Task<Unit> = tasksFactory.asyncCreate {
+    override suspend fun setCurrentColor(color: NamedColor): Unit = tasksFactory.asyncCreate {
         threadUtils.sleep(1000)
         if (currentColor != color){
             currentColor = color
             listeners.forEach { it(color) }
         }
-    }
+    }.suspend()
 
     companion object {
         private val AVAILABLE_COLORS = listOf(

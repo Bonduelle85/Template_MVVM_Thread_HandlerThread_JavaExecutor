@@ -5,6 +5,7 @@ import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.map
+import androidx.lifecycle.viewModelScope
 import com.example.foundation.model.ErrorResult
 import com.example.foundation.model.FinalResult
 import com.example.foundation.model.LoadingResult
@@ -18,6 +19,8 @@ import com.example.foundation.views.BaseViewModel
 import com.example.templateprojectmvvm.R
 import com.example.templateprojectmvvm.model.colors.ColorsRepository
 import com.example.templateprojectmvvm.model.colors.NamedColor
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 
 class ChangeColorViewModel(
@@ -25,17 +28,13 @@ class ChangeColorViewModel(
     private val navigator: Navigator,
     private val uiActions: UiActions,
     private val colorsRepository: ColorsRepository,
-    private val tasksFactory: TasksFactory,
-    savedStateHandle: SavedStateHandle,
-    dispatcher: Dispatcher
-) : BaseViewModel(dispatcher), ColorsAdapter.Listener {
+    savedStateHandle: SavedStateHandle
+) : BaseViewModel(), ColorsAdapter.Listener {
 
     // Input sources. Входящие источники для фрагмента: цвета, текущий цвет и состояние
     private val _availableColors = MutableLiveData<Result<List<NamedColor>>>(LoadingResult())
-    private val _currentColorId =
-        savedStateHandle.getLiveData("currentColorId", screen.currentColorId)
-    private val _inProgress =
-        MutableLiveData<Boolean>(false)           // false потому что изначально !_inProgress
+    private val _currentColorId = savedStateHandle.getLiveData("currentColorId", screen.currentColorId)
+    private val _inProgress = MutableLiveData<Boolean>(false)           // false потому что изначально !_inProgress
 
     // main destination (contains merged values (ViewState) from _availableColors & _currentColorId & _inProgress)
     private val _viewState = MediatorLiveData<Result<ViewState>>()
@@ -64,15 +63,21 @@ class ChangeColorViewModel(
         _currentColorId.value = namedColor.id
     }
 
-    fun onSavePressed() {
-        _inProgress.postValue(true)
-        tasksFactory.asyncCreate {
+    fun onSavePressed() = viewModelScope.launch {
+        try {
+            _inProgress.postValue(true)
             val currentColorId =
                 _currentColorId.value ?: throw IllegalStateException("Color ID can not be null")
-            val currentColor = colorsRepository.getById(currentColorId).await()
-            colorsRepository.setCurrentColor(currentColor).await()
-            return@asyncCreate currentColor
-        }.safeEnqueue { onSaved(it) }
+            val currentColor = colorsRepository.getById(currentColorId)
+            colorsRepository.setCurrentColor(currentColor)
+
+            navigator.goBack(currentColor)
+        } catch (e: Exception) {
+            if (e !is CancellationException) uiActions.toast(uiActions.getString(R.string.error_happened))
+        } finally {
+            _inProgress.value = false
+        }
+
     }
 
     fun onCancelPressed() {
@@ -104,18 +109,7 @@ class ChangeColorViewModel(
     fun tryAgain() {
         load()
     }
-
-    private fun load() {
-        colorsRepository.getAvailableColors().into(_availableColors)
-    }
-
-    private fun onSaved(result: FinalResult<NamedColor>) {
-        _inProgress.value = false
-        when(result){
-            is SuccessResult -> navigator.goBack(result.data)
-            is ErrorResult -> uiActions.toast(uiActions.getString(R.string.error_happened))
-        }
-    }
+    private fun load() = into(_availableColors) { colorsRepository.getAvailableColors() }
 
     // Класс для отображения состояние фрагментаЖ список цветов и видимость элементов (кнопки и бар)
     data class ViewState(

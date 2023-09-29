@@ -24,9 +24,8 @@ import kotlinx.coroutines.launch
 class CurrentColorViewModel(
     private val navigator: Navigator,
     private val uiActions: UiActions,
-    private val colorsRepository: ColorsRepository,
-    dispatcher: Dispatcher
-) : BaseViewModel(dispatcher) {
+    private val colorsRepository: ColorsRepository
+) : BaseViewModel() {
 
     private val _currentColor = MutableLiveData<Result<NamedColor>>(LoadingResult()) // изначально в ЛайвДате LoadingResult - показываем прогрессБар.
     val currentColor: LiveData<Result<NamedColor>> = _currentColor
@@ -68,7 +67,7 @@ class CurrentColorViewModel(
       load()
     }
 
-    private fun load(){
-        colorsRepository.getCurrentColor().into(_currentColor)
+    private fun load() = into(_currentColor) {
+        colorsRepository.getCurrentColor()
     }
 }
