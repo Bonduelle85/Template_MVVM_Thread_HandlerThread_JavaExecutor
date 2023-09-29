@@ -6,13 +6,9 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.map
 import androidx.lifecycle.viewModelScope
-import com.example.foundation.model.ErrorResult
-import com.example.foundation.model.FinalResult
 import com.example.foundation.model.LoadingResult
 import com.example.foundation.model.Result
 import com.example.foundation.model.SuccessResult
-import com.example.foundation.model.tasks.factories.TasksFactory
-import com.example.foundation.model.tasks.dispatchers.Dispatcher
 import com.example.foundation.navigator.Navigator
 import com.example.foundation.uiactions.UiActions
 import com.example.foundation.views.BaseViewModel
@@ -77,7 +73,6 @@ class ChangeColorViewModel(
         } finally {
             _inProgress.value = false
         }
-
     }
 
     fun onCancelPressed() {

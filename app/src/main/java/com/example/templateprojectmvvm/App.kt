@@ -1,14 +1,12 @@
 package com.example.templateprojectmvvm
 
+
 import android.app.Application
 import com.example.foundation.BaseApplication
-import com.example.foundation.model.tasks.ThreadUtils
-import com.example.foundation.model.tasks.dispatchers.MainThreadDispatcher
-import com.example.foundation.model.tasks.factories.ExecutorServiceTaskFactory
-import com.example.foundation.model.tasks.factories.HandlerThreadTaskFactory
-import com.example.foundation.model.tasks.factories.ThreadTasksFactory
 import com.example.templateprojectmvvm.model.colors.InMemoryColorsRepository
-import java.util.concurrent.Executors
+import com.example.templateprojectmvvm.model.coroutinrs.DefaultDispatcher
+import com.example.templateprojectmvvm.model.coroutinrs.IODispatcher
+import kotlinx.coroutines.Dispatchers
 
 
 /**
@@ -16,22 +14,14 @@ import java.util.concurrent.Executors
  */
 class App : Application(), BaseApplication {
 
-    private val tasksFactory = ThreadTasksFactory()
-//    private val tasksFactory = ExecutorServiceTaskFactory(Executors.newCachedThreadPool())
-//    private val tasksFactory = HandlerThreadTaskFactory()
-
-    private val threadUtils = ThreadUtils.Default()
-    private val dispatcher = MainThreadDispatcher()
+    val idDispatcher = IODispatcher(Dispatchers.IO)
+    val defaultDispatcher = DefaultDispatcher(Dispatchers.Default)
 
     /**
      * Place your repositories here, now we have only 1 repository
      */
     override val singletonScopeDependencies: List<Any> = listOf(
-        tasksFactory,
-        dispatcher,
-        InMemoryColorsRepository(
-            tasksFactory,
-            threadUtils)
+        InMemoryColorsRepository(idDispatcher)
     )
 
 }

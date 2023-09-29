@@ -1,7 +1,6 @@
 package com.example.templateprojectmvvm.model.colors
 
 import com.example.foundation.model.Repository
-import com.example.foundation.model.tasks.Task
 
 typealias ColorListener = (NamedColor) -> Unit
 

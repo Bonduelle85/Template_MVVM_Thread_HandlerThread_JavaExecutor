@@ -8,7 +8,7 @@ import com.example.foundation.model.LoadingResult
 import com.example.foundation.model.Result
 import com.example.foundation.model.SuccessResult
 import com.example.foundation.model.takeSuccess
-import com.example.foundation.model.tasks.dispatchers.Dispatcher
+import com.example.foundation.model.dispatchers.Dispatcher
 import com.example.foundation.navigator.Navigator
 import com.example.foundation.uiactions.UiActions
 import com.example.foundation.views.BaseViewModel
