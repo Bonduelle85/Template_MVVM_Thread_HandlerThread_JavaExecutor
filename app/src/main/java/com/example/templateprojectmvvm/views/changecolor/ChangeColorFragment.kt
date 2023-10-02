@@ -5,7 +5,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.foundation.model.ErrorResult
 import com.example.foundation.model.LoadingResult
@@ -17,6 +20,7 @@ import com.example.foundation.views.HasScreenTitle
 import com.example.foundation.views.screenViewModel
 import com.example.templateprojectmvvm.R
 import com.example.templateprojectmvvm.databinding.FragmentChangeColorBinding
+import kotlinx.coroutines.launch
 import java.lang.NullPointerException
 import java.lang.RuntimeException
 
@@ -52,32 +56,37 @@ class ChangeColorFragment : BaseFragment(), HasScreenTitle {
         binding.saveButton.setOnClickListener { viewModel.onSavePressed() }
         binding.cancelButton.setOnClickListener { viewModel.onCancelPressed() }
 
-        viewModel.viewState.observe(viewLifecycleOwner) { result ->
-            when (result){
-                is SuccessResult -> {
-                    val viewState = result.takeSuccess()
-                    if (viewState == null){
-                        throw NullPointerException()
-                    } else {
-                        adapter.items = viewState.colorsList
-                        binding.saveButton.visibility = if (viewState.saveButtonIsShown) View.VISIBLE else View.GONE
-                        binding.cancelButton.visibility = if (viewState.cancelButtonIsShown) View.VISIBLE else View.GONE
-                        binding.saveProgressBar.visibility = if (viewState.saveProgressBarIsShown) View.VISIBLE else View.GONE
-                    }
-                    binding.resultLayout.progressBar.visibility = View.GONE
-                    binding.resultLayout.errorContainer.visibility = View.GONE
+        viewLifecycleOwner.lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED){
+                viewModel.viewState.collect{ result ->
+                    when (result){
+                        is SuccessResult -> {
+                            val viewState = result.takeSuccess()
+                            if (viewState == null){
+                                throw NullPointerException()
+                            } else {
+                                adapter.items = viewState.colorsList
+                                binding.saveButton.visibility = if (viewState.saveButtonIsShown) View.VISIBLE else View.GONE
+                                binding.cancelButton.visibility = if (viewState.cancelButtonIsShown) View.VISIBLE else View.GONE
+                                binding.saveProgressBar.visibility = if (viewState.saveProgressBarIsShown) View.VISIBLE else View.GONE
+                            }
+                            binding.resultLayout.progressBar.visibility = View.GONE
+                            binding.resultLayout.errorContainer.visibility = View.GONE
 
+                        }
+                        is LoadingResult ->{
+                            binding.resultLayout.errorContainer.visibility = View.GONE
+                        }
+                        is ErrorResult -> {
+                            binding.resultLayout.errorContainer.visibility = View.VISIBLE
+                            binding.resultLayout.progressBar.visibility = View.GONE
+                        }
                 }
-                is LoadingResult ->{
-                    binding.resultLayout.errorContainer.visibility = View.GONE
-                }
-                is ErrorResult -> {
-                    binding.resultLayout.errorContainer.visibility = View.VISIBLE
-                    binding.resultLayout.progressBar.visibility = View.GONE
+
                 }
             }
-
         }
+
         viewModel.screenTitle.observe(viewLifecycleOwner) {
             // if screen title is changed -> need to notify activity about updates
             notifyScreenUpdates()

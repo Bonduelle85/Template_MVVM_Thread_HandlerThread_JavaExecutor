@@ -18,6 +18,7 @@ import com.example.templateprojectmvvm.model.colors.ColorsRepository
 import com.example.templateprojectmvvm.model.colors.NamedColor
 import com.example.templateprojectmvvm.views.changecolor.ChangeColorFragment
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 
@@ -30,20 +31,13 @@ class CurrentColorViewModel(
     private val _currentColor = MutableLiveData<Result<NamedColor>>(LoadingResult()) // изначально в ЛайвДате LoadingResult - показываем прогрессБар.
     val currentColor: LiveData<Result<NamedColor>> = _currentColor
 
-    private val colorListener: ColorListener = {
-        _currentColor.postValue(SuccessResult(it))
-    }
-
-    // --- example of listening results via model layer
-
     init {
-        colorsRepository.addListener(colorListener)
+        viewModelScope.launch {
+            colorsRepository.listenCurrentColor().collect{
+                _currentColor.postValue(SuccessResult(it))
+            }
+        }
         load()
-    }
-
-    override fun onCleared() {
-        super.onCleared()
-        colorsRepository.removeListener(colorListener)
     }
 
     // --- example of listening results directly from the screen
