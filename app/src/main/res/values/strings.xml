@@ -21,4 +21,8 @@
     <string name="error_try_again_later">Error. Try again later</string>
     <string name="error_happened">Error happened</string>
     <string name="try_again">Try again</string>
+
+    <string name="percentage_value">%1$d%%</string>
+    <string name="please_wait">Please wait...</string>
+
 </resources>

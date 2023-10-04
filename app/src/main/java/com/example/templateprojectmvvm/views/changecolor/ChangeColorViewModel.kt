@@ -2,10 +2,8 @@ package com.example.templateprojectmvvm.views.changecolor
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.asLiveData
-import androidx.lifecycle.map
 import androidx.lifecycle.viewModelScope
 import com.example.foundation.model.LoadingResult
 import com.example.foundation.model.Result
@@ -14,14 +12,21 @@ import com.example.foundation.navigator.Navigator
 import com.example.foundation.uiactions.UiActions
 import com.example.foundation.views.BaseViewModel
 import com.example.templateprojectmvvm.R
+import com.example.templateprojectmvvm.model.EmptyProgress
+import com.example.templateprojectmvvm.model.PercentageProgress
+import com.example.templateprojectmvvm.model.Progress
 import com.example.templateprojectmvvm.model.colors.ColorsRepository
 import com.example.templateprojectmvvm.model.colors.NamedColor
+import com.example.templateprojectmvvm.model.coroutinrs.finiteShareIn
+import com.example.templateprojectmvvm.model.getPercentage
+import com.example.templateprojectmvvm.model.isInProgress
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
 
 
@@ -37,13 +42,16 @@ class ChangeColorViewModel(
     private val _availableColors = MutableStateFlow<Result<List<NamedColor>>>(LoadingResult())
     private val _currentColorId =
         savedStateHandle.getStateFlowCustom("currentColorId", screen.currentColorId)
-    private val _inProgress = MutableStateFlow(false)
+    private val _instanceSaveInProgress = MutableStateFlow<Progress>(EmptyProgress)
+    private val _sampledSaveInProgress = MutableStateFlow<Progress>(EmptyProgress)
+
 
     // main destination (contains merged values (ViewState) from _availableColors & _currentColorId & _inProgress)
     val viewState: Flow<Result<ViewState>> = combine(
         flow = _availableColors,
         flow2 = _currentColorId,
-        flow3 = _inProgress,
+        flow3 = _instanceSaveInProgress,
+        flow4 = _sampledSaveInProgress,
         transform = ::mergeSources
     )
 
@@ -61,23 +69,40 @@ class ChangeColorViewModel(
     }
 
     override fun onColorChosen(namedColor: NamedColor) {
-        if (_inProgress.value == true) return
+        if (_instanceSaveInProgress.value.isInProgress()) return
         _currentColorId.value = namedColor.id
     }
 
     fun onSavePressed() = viewModelScope.launch {
         try {
-            _inProgress.value = true
-            val currentColorId =
-                _currentColorId.value ?: throw IllegalStateException("Color ID can not be null")
+            _instanceSaveInProgress.value = PercentageProgress.START
+            _sampledSaveInProgress.value = PercentageProgress.START
+
+            val currentColorId = _currentColorId.value
             val currentColor = colorsRepository.getById(currentColorId)
-            colorsRepository.setCurrentColor(currentColor).collect()
+
+            val flow = colorsRepository.setCurrentColor(currentColor).finiteShareIn(this)
+
+            val instantJob = async {
+                flow.collect{ percentage ->
+                    _instanceSaveInProgress.value = PercentageProgress(percentage)
+                }
+            }
+
+            val sampledJob = async {
+                flow.sample(400).collect{ percentage ->
+                    _sampledSaveInProgress.value = PercentageProgress(percentage)
+                }
+            }
+
+            instantJob.await()
+            sampledJob.await()
 
             navigator.goBack(currentColor)
         } catch (e: Exception) {
             if (e !is CancellationException) uiActions.toast(uiActions.getString(R.string.error_happened))
         } finally {
-            _inProgress.value = false
+            _instanceSaveInProgress.value = EmptyProgress
         }
     }
 
@@ -95,15 +120,18 @@ class ChangeColorViewModel(
     private fun mergeSources(
         colors: Result<List<NamedColor>>,
         currentColorId: Long,
-        inProgress: Boolean
+        instanceSaveInProgress: Progress,
+        sampledSaveInProgress: Progress
     ): Result<ViewState> {
 
         return colors.map { colorsList ->
             ViewState(
                 colorsList = colorsList.map { NamedColorListItem(it, currentColorId == it.id) },
-                saveButtonIsShown = !inProgress,
-                cancelButtonIsShown = !inProgress,
-                saveProgressBarIsShown = inProgress
+                saveButtonIsShown = !instanceSaveInProgress.isInProgress(),
+                cancelButtonIsShown = !instanceSaveInProgress.isInProgress(),
+                saveProgressBarIsShown = instanceSaveInProgress.isInProgress(),
+                saveProgressPercentage = instanceSaveInProgress.getPercentage(),
+                saveProgressPercentageMessage = uiActions.getString(R.string.percentage_value, sampledSaveInProgress.getPercentage())
             )
         }
     }
@@ -120,5 +148,8 @@ class ChangeColorViewModel(
         val saveButtonIsShown: Boolean,
         val cancelButtonIsShown: Boolean,
         val saveProgressBarIsShown: Boolean,
+        val saveProgressPercentage: Int,
+        val saveProgressPercentageMessage: String,
+
     )
 }

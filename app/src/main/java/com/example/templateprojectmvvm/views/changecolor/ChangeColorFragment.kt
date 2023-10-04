@@ -21,8 +21,7 @@ import com.example.foundation.views.screenViewModel
 import com.example.templateprojectmvvm.R
 import com.example.templateprojectmvvm.databinding.FragmentChangeColorBinding
 import kotlinx.coroutines.launch
-import java.lang.NullPointerException
-import java.lang.RuntimeException
+
 
 /**
  * Screen for changing color.
@@ -68,7 +67,11 @@ class ChangeColorFragment : BaseFragment(), HasScreenTitle {
                                 adapter.items = viewState.colorsList
                                 binding.saveButton.visibility = if (viewState.saveButtonIsShown) View.VISIBLE else View.GONE
                                 binding.cancelButton.visibility = if (viewState.cancelButtonIsShown) View.VISIBLE else View.GONE
-                                binding.saveProgressBar.visibility = if (viewState.saveProgressBarIsShown) View.VISIBLE else View.GONE
+
+                                binding.saveProgressGroup.visibility = if (viewState.saveProgressBarIsShown) View.VISIBLE else View.GONE
+
+                                binding.saveProgressBar.progress = viewState.saveProgressPercentage
+                                binding.savingPercentageTextView.text = viewState.saveProgressPercentageMessage
                             }
                             binding.resultLayout.progressBar.visibility = View.GONE
                             binding.resultLayout.errorContainer.visibility = View.GONE
@@ -76,6 +79,7 @@ class ChangeColorFragment : BaseFragment(), HasScreenTitle {
                         }
                         is LoadingResult ->{
                             binding.resultLayout.errorContainer.visibility = View.GONE
+                            binding.saveProgressGroup.visibility = View.GONE
                         }
                         is ErrorResult -> {
                             binding.resultLayout.errorContainer.visibility = View.VISIBLE
