@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.takeWhile
 
+// --- helper classes for materializing source flows
 private sealed class Element<T>
 
 private class ItemElement<T>(
@@ -20,6 +21,13 @@ private class ErrorElement<T>(
 ): Element<T>()
 
 private class CompletedElement<T>: Element<T>()
+
+
+
+/**
+ * Transform this Flow into Hot Shared Flow (like by using [shareIn] operator), but which is finite and
+ * which also propagates exceptions from the source flow.
+ */
 
 fun <T> Flow<T>.finiteShareIn(coroutineScope: CoroutineScope): Flow<T> {
     return this
